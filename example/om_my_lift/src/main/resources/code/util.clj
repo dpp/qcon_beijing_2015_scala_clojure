@@ -1,0 +1,106 @@
+(ns code.util
+  (:require [clojure.core.async :as async :refer [put!]])
+  (:import (scala.collection Seq Iterator Map)
+           (scala Product PartialFunction)
+           (net.liftweb.actor LiftActor)
+           (clojure.lang IFn)
+           (code.lib MyActor)
+           (clojure.core.async.impl.channels ManyToManyChannel)))
+
+(defprotocol FromScala
+  "Converts all manner of Scala stuff into Clojure stuff"
+  (to-c [x] "Convert the Scala thing to the clojure thing"))
+
+(extend Iterator FromScala
+  {:to-c
+   (fn [it]
+     (letfn [(build [] (if (.hasNext it)
+                         (cons (.next it) (build))
+                         nil))]
+       (build)))})
+
+(defn seq-to [^Seq seq] (-> seq .iterator to-c))
+
+(extend Seq FromScala
+  {:to-c seq-to})
+
+(extend Map FromScala
+  {:to-c
+   (fn [^Map the-map]
+     (into {} (map
+                #(to-c %)
+                (-> the-map .iterator to-c)))
+     )})
+
+(extend Product FromScala
+  {:to-c
+   (fn [^Product prod]
+     (if
+       (instance? Seq prod)
+       (seq-to prod)
+       (mapv #(.productElement prod %)
+             (range 0 (.productArity prod)))))})
+
+(extend LiftActor FromScala
+  {:to-c
+   (fn [^LiftActor actor]
+     (fn [x] (.$bang actor x))
+     )})
+
+
+
+(defn extend-a-func
+  [arity]
+  `(extend ~(symbol (str "scala.Function" arity))  FromScala
+     {:to-c
+      (fn [func#]
+        (fn ~(mapv #(symbol (str "p" % "#")) (range 0 arity))
+          (.apply func# ~@(map #(symbol (str "p" % "#")) (range 0 arity)) )))
+      }))
+
+(defmacro extend-all
+  []
+  `(do ~@(map #(extend-a-func %) (range 0 20))))
+
+(extend-all)
+
+(extend Object FromScala
+  {:to-c identity})
+
+(extend LiftActor FromScala
+  {:to-c (fn [^LiftActor actor] (fn [x] (.$bang actor x)))})
+
+(def ^:dynamic *current-actor* nil)
+
+(defprotocol Applyable
+  "Does an application... treats whatever like a single param function"
+  (apply-it [the-fn param] "applies the parameter"))
+
+(extend IFn Applyable
+  {:apply-it
+   (fn [the-fn param] (the-fn param))})
+
+(extend scala.Function1 Applyable
+  {:apply-it
+   (fn [^scala.Function1 the-fn param] (.apply the-fn param))})
+
+(extend ManyToManyChannel Applyable
+  {:apply-it
+   (fn [^ManyToManyChannel the-chan param] (put! the-chan param))}
+  )
+
+(defn build-actor
+  "Takes a Clojure function and invokes the function on every message received from the Actor"
+  [the-fn]
+  (let [my-this (atom nil)
+        ret
+        (proxy [MyActor] []
+          (messageHandler []
+            (proxy [PartialFunction] []
+              (isDefinedAt [x] true)
+              (apply [x] (binding [*current-actor* @my-this]
+                           (apply-it the-fn x))))))]
+    (reset! my-this ret)
+    ret
+    )
+  )

@@ -1,5 +1,6 @@
 package bootstrap.liftweb
 
+import code.lib.ClojureInterop
 import net.liftweb._
 import util._
 import Helpers._
@@ -12,7 +13,6 @@ import Loc._
 import mapper._
 
 import code.model._
-import net.liftmodules.JQueryModule
 
 
 /**
@@ -56,10 +56,6 @@ class Boot {
     // each page, just comment this line out.
     LiftRules.setSiteMapFunc(() => sitemapMutators(sitemap))
 
-    //Init the jQuery module, see http://liftweb.net/jquery for more information.
-    LiftRules.jsArtifacts = JQueryArtifacts
-    JQueryModule.InitParam.JQuery=JQueryModule.JQuery191
-    JQueryModule.init()
 
     //Show the spinny image when an Ajax call starts
     LiftRules.ajaxStart =
@@ -77,9 +73,14 @@ class Boot {
 
     // Use HTML5 for rendering
     LiftRules.htmlProperties.default.set((r: Req) =>
-      new Html5Properties(r.userAgent))    
+      new Html5Properties(r.userAgent))
+
+    // get rid of the content security policy warnings
+    LiftRules.contentSecurityPolicyViolationReport = x => Empty
 
     // Make a transaction span the whole HTTP request
     S.addAround(DB.buildLoanWrapper)
+
+    ClojureInterop.boot()
   }
 }
