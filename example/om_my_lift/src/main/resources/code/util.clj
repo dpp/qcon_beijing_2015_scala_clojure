@@ -15,7 +15,8 @@
   {:to-c
    (fn [it]
      (letfn [(build [] (if (.hasNext it)
-                         (cons (.next it) (build))
+                         (cons (.next it)
+                               (lazy-seq (build)))
                          nil))]
        (build)))})
 
@@ -92,6 +93,7 @@
 (defn build-actor
   "Takes a Clojure function and invokes the function on every message received from the Actor"
   [the-fn]
+  (require nil)
   (let [my-this (atom nil)
         ret
         (proxy [MyActor] []
@@ -103,4 +105,14 @@
     (reset! my-this ret)
     ret
     )
+  )
+
+(defn actor-channel
+  "Builds a Scala actor and a core.async channel. When a message is sent
+  to the Actor, it's put on the channel. Returns a Vector containing the Actor
+  and the channel"
+  (let [my-chan (async.chan)
+        the-actor (build-actor (fn [msg] (put! my-chan msg)))]
+    [the-actor my-chan])
+
   )
