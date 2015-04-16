@@ -39,7 +39,10 @@ class Actorize {
       // get a server-side actor that when we send
       // a JSON serializable object, it will send it to the client
       // and call the named function with the parameter
-      val clientProxy = sess.serverActorForClient("changeNode")
+      val clientProxy = sess.serverActorForClient("changeNode",
+        shutdownFunc = Full(() => 33),
+      datafilter = 44
+      )
 
       // Create a server-side Actor that will receive messaes when
       // a function on the client is called
@@ -82,7 +85,7 @@ override def localShutdown(): Unit = {
   super.localShutdown()
 }
 
-  
+
 
 override def lifespan = Full(LiftRules.clientActorLifespan.vend.apply(this))
 
