@@ -68,7 +68,3 @@ object HelloWorldTestSpecs extends Specification with AroundExample{
     }
   }
 }
-
-class MyHelloWorld extends CometActor {
-
-}

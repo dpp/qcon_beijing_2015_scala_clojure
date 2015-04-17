@@ -1,5 +1,7 @@
 package code.lib
 
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+
 import clojure.java.api.Clojure
 import clojure.lang.{RT, IFn}
 import net.liftweb.actor.LiftActor
@@ -24,6 +26,26 @@ object ClojureInterop {
     Clojure.`var`("clojure.core", "str")
   }
 
+  lazy val transitReader = {
+    require.invoke(Clojure.read("cognitect.transit"))
+    Clojure.`var`("cognitect.transit", "reader")
+  }
+
+  lazy val transitRead = {
+    require.invoke(Clojure.read("cognitect.transit"))
+    Clojure.`var`("cognitect.transit", "read")
+  }
+
+  lazy val transitWriter = {
+    require.invoke(Clojure.read("cognitect.transit"))
+    Clojure.`var`("cognitect.transit", "writer")
+  }
+
+  lazy val transitWrite = {
+    require.invoke(Clojure.read("cognitect.transit"))
+    Clojure.`var`("cognitect.transit", "write")
+  }
+
   lazy val keyword = {
     Clojure.`var`("clojure.core", "keyword")
   }
@@ -45,13 +67,20 @@ object ClojureInterop {
    * @param packageName
    */
   def requirePackage(packageName: String): Unit = {
-    RT.load("foo")
     require.invoke(Clojure.read(packageName))
   }
 
   def toKeyword(in: String): Object = {
     keyword.invoke(in)
   }
+
+  /**
+   * A thin layer over Clojure.var
+   * @param pkg the package
+   * @param vr the var name
+   * @return the var
+   */
+  def findVar(pkg: String, vr: String): IFn = Clojure.`var`(pkg, vr)
 
   /**
    * Reload a named Clojure package
@@ -69,6 +98,25 @@ object ClojureInterop {
     ret <- Box.asA[T](ifn.invoke(a))
 
   } yield ret}.flatMap(a => a)
+
+  def transitWrite(in: Any): String = {
+    val bos = new ByteArrayOutputStream(4096)
+    val writer = transitWriter.invoke(bos, toKeyword("json"))
+    transitWrite.invoke(writer, in)
+    new String(bos.toByteArray, "UTF-8")
+  }
+
+  def transitRead(in: String): Object = {
+    val bis = new ByteArrayInputStream(in.getBytes("UTF-8"))
+    val reader = transitReader.invoke(bis, toKeyword("json"))
+    transitRead.invoke(reader)
+  }
 }
 
+/**
+ * LiftActor is a trait in Scala-land, but in Clojure-land,
+ * we want to subclass LiftActor, so we use the Scala compiler
+ * to reify LiftActor into a class that can be accessed in
+ * Clojure-land
+ */
 abstract class MyActor extends LiftActor

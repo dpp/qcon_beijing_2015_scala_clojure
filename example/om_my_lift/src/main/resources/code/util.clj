@@ -1,7 +1,7 @@
 (ns code.util
   (:require [clojure.core.async :as async :refer [put!]])
   (:import (scala.collection Seq Iterator Map)
-           (scala Product PartialFunction)
+           (scala Product PartialFunction Symbol)
            (net.liftweb.actor LiftActor)
            (clojure.lang IFn)
            (code.lib MyActor)
@@ -13,11 +13,13 @@
 
 (extend Iterator FromScala
   {:to-c
-   (fn [it]
-     (letfn [(build [] (if (.hasNext it)
-                         (cons (.next it)
-                               (lazy-seq (build)))
-                         nil))]
+   (fn [^Iterator it]
+     (letfn [(build
+               []
+               (if (.hasNext it)
+                 (cons (to-c (.next it))
+                       (lazy-seq (build)))
+                 nil))]
        (build)))})
 
 (defn seq-to [^Seq seq] (-> seq .iterator to-c))
@@ -37,9 +39,10 @@
   {:to-c
    (fn [^Product prod]
      (if
-       (instance? Seq prod)
-       (seq-to prod)
-       (mapv #(.productElement prod %)
+       ;; things that are a Prod and a Seq... treat as a Seq
+       (instance? Seq prod) (seq-to prod)
+
+       (mapv #(->> % (.productElement prod) to-c)
              (range 0 (.productArity prod)))))})
 
 (extend LiftActor FromScala
@@ -47,6 +50,10 @@
    (fn [^LiftActor actor]
      (fn [x] (.$bang actor x))
      )})
+
+(extend Symbol FromScala
+  {:to-c
+   (fn [^Symbol s] (-> s .name keyword))})
 
 
 
@@ -68,9 +75,6 @@
 (extend Object FromScala
   {:to-c identity})
 
-(extend LiftActor FromScala
-  {:to-c (fn [^LiftActor actor] (fn [x] (.$bang actor x)))})
-
 (def ^:dynamic *current-actor* nil)
 
 (defprotocol Applyable
@@ -79,7 +83,7 @@
 
 (extend IFn Applyable
   {:apply-it
-   (fn [the-fn param] (the-fn param))})
+   (fn [^IFn the-fn param] (the-fn param))})
 
 (extend scala.Function1 Applyable
   {:apply-it
@@ -89,6 +93,7 @@
   {:apply-it
    (fn [^ManyToManyChannel the-chan param] (put! the-chan param))}
   )
+
 
 (defn build-actor
   "Takes a Clojure function and invokes the function on every message received from the Actor"

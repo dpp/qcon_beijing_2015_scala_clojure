@@ -2,7 +2,7 @@
   (:require [code.util :as util]
             [clojure.core.async :as async]))
 
-(defonce chat-server (async/chan))
+(def chat-server (async/chan))
 
 (def- send-msg
       "Send a message to the channel or function or whatever"
@@ -11,6 +11,11 @@
         (ifn? chan) (chan msg)
         :else (async/put! chan msg))
       )
+
+(defn post-msg
+  "Posts a message to the chat-server"
+  [msg]
+  (->> msg util/to-c (send-msg chat-server)))
 
 (async/go-loop [chats []
                 listeners []]
