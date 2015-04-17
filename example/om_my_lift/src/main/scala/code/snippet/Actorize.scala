@@ -1,4 +1,4 @@
-package code 
+package code
 package snippet
 
 import clojure.java.api.Clojure
@@ -9,25 +9,21 @@ import net.liftweb.json.JsonAST.JString
 
 import net.liftweb.common._
 import code.lib._
+import scala.xml.NodeSeq
 
 
-object Actorize {
+object Actorize extends InSession {
   lazy val postMsg = {
     ClojureInterop.require.invoke(Clojure.read("code.core"))
     ClojureInterop.findVar("code.core", "post-msg")
   }
 
-  def render = {
-    for (
-      sess <- S.session
-    ) yield {
-      // get a server-side actor that when we a message to, the
-      // message gets Transit encoded and sent to the
-      // browser and the `messageFromServer` function is
-      // called
-      val clientProxy = sess.serverActorForClient("messageFromServer",
-        dataFilter = ClojureInterop.transitWrite(_)
-      )
+  def render: NodeSeq = {
+    <tail>
+      {
+      val clientProxy = session.serverActorForClient("omish.core.receive",
+        shutdownFunc = Full(actor => postMsg.invoke('remove -> actor)),
+        dataFilter = ClojureInterop.transitWrite(_))
 
       postMsg.invoke('add -> clientProxy) // register with the chat server
 
@@ -39,8 +35,10 @@ object Actorize {
         }
       }
 
-      Script(JsRaw("var sendToServer = " + sess.clientActorFor(serverActor).toJsCmd).cmd )
+      Script(JsRaw("var sendToServer = " + session.clientActorFor(serverActor).toJsCmd).cmd)
     }
+    </tail>
+
   }
 
 }

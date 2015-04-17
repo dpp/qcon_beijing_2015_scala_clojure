@@ -6,12 +6,16 @@
   </head>
   <body data-lift-content-id="main">
     <div id="main" data-lift="surround?with=default;at=content">
-      <h2>Welcome to your project!</h2>
+
+        <div data-lift="Actorize"></div>
       <p>
-      	<span data-lift="HelloWorld.howdy">
-      	  Welcome to your Lift app at <span id="time">Time goes here</span>
-      	</span>
+      	<span id="chats"></span>
+          <hr>
+        <input id="in"><button id="send">Chat</button>
       </p>
+        <tail>
+            <script src="/boot.js" type="text/javascript"></script>
+        </tail>
     </div>
   </body>
 </html>

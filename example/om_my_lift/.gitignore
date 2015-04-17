@@ -2,3 +2,4 @@ target
 .idea
 *.db
 *.log
+gen_js

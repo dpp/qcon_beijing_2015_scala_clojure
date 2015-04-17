@@ -6,7 +6,8 @@ import clojure.java.api.Clojure
 import clojure.lang.{RT, IFn}
 import net.liftweb.actor.LiftActor
 import net.liftweb.common.Box
-import net.liftweb.util.Helpers
+import net.liftweb.http.{S, LiftSession}
+import net.liftweb.util.{ThreadGlobal, Helpers}
 
 /**
  * Created by dpp on 3/27/15.
@@ -148,4 +149,9 @@ abstract class MyActor extends LiftActor
 
 class MySingleFunc(ifn: IFn) extends Function1[Any, Object] {
   def apply(p: Any): Object = ifn.invoke(p)
+}
+
+trait InSession {
+  protected def session = S.session openOrThrowException "Called in a snippet"
+
 }
