@@ -16,15 +16,25 @@ object ClojureInterop {
   lazy val eval: IFn = Clojure.`var`("clojure.core", "eval")
 
   lazy val cvt = {
-    require.invoke(Clojure.read("code.core"))
     require.invoke(Clojure.read("code.util"))
+    require.invoke(Clojure.read("code.core"))
+
     Clojure.`var`("code.util", "to-c")
   }
-  lazy val str = {
-    require.invoke(Clojure.read("code.core"))
+
+  lazy val ctos = {
     require.invoke(Clojure.read("code.util"))
+    require.invoke(Clojure.read("code.core"))
+
+    Clojure.`var`("code.util", "to-s")
+  }
+
+
+  lazy val str = {
     Clojure.`var`("clojure.core", "str")
   }
+
+  lazy val theEval = Clojure.`var`("clojure.core", "eval")
 
   lazy val transitReader = {
     require.invoke(Clojure.read("cognitect.transit"))
@@ -61,6 +71,21 @@ object ClojureInterop {
    * @return a Clojure-friendly class
    */
   def scalaToClojure(in: Any): Any = cvt.invoke(in)
+
+  /**
+   * Converts the Clojure class into something that's Scala-friendly
+   * @param in the Clojure-ish class
+   * @return a Scala-friendly class
+   */
+  def clojureToScala(in: Any): Any = ctos.invoke(in)
+
+  /**
+   * Send the String through the Clojure reader and then eval it
+   * @param str the String that contains an S-expression
+   * @return the eval'ed result
+   */
+  def eval(str: String): Object =
+  theEval.invoke(Clojure.read(str))
 
   /**
    * Requires a Clojure package
@@ -120,3 +145,7 @@ object ClojureInterop {
  * Clojure-land
  */
 abstract class MyActor extends LiftActor
+
+class MySingleFunc(ifn: IFn) extends Function1[Any, Object] {
+  def apply(p: Any): Object = ifn.invoke(p)
+}

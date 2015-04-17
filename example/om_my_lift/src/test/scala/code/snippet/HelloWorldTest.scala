@@ -1,9 +1,11 @@
 package code
 package snippet
 
-import clojure.lang.IPersistentVector
+import clojure.java.api.Clojure
+import clojure.lang.{IFn, IPersistentVector}
 import net.liftweb._
 import http._
+import net.liftweb.actor.LiftActor
 import net.liftweb.util._
 import net.liftweb.common._
 import Helpers._
@@ -54,17 +56,41 @@ object HelloWorldTestSpecs extends Specification with AroundExample{
       converted.get(2) must_== from._3
     }
 
-  }
-
-  "HelloWorld Snippet" should {
-    "Put the time in the node" in {
-      val hello = new HelloWorld
-      Thread.sleep(1000) // make sure the time changes
-
-      val str = hello.howdy(<span>Welcome to your Lift app at <span id="time">Time goes here</span></span>).toString
-
-      str.indexOf(stableTime.toString) must be >= 0
-      str must startWith("<span>Welcome to")
+    "Do a deep convert" in {
+      val from = ('frog, new LiftActor {
+        override protected def messageHandler: PartialFunction[Any, Unit] =  {
+          case _ =>
+        }
+      })
+      val converted = ClojureInterop.scalaToClojure(from).asInstanceOf[java.util.List[Any]]
+      converted.isInstanceOf[IPersistentVector] must_== true
+      (converted.size()) must_== from.productArity
+      converted.get(0) must_== ClojureInterop.toKeyword("frog")
+      converted.get(1).isInstanceOf[IFn] must_== true
     }
+
+    "Convert Clojure to Scala" in {
+      ClojureInterop.clojureToScala(ClojureInterop.eval("""["foo" 42 :dog {:dog 88, "cat" :moose}]""")) must_==
+        Vector("foo", 42, 'dog, Map('dog -> 88, "cat" -> 'moose))
+    }
+
+    "Test soup to nuts" in {
+      var got: Vector[Any] = Vector()
+      val act = new LiftActor {
+        override protected def messageHandler: PartialFunction[Any, Unit] = {
+          case x => got :+= ClojureInterop.clojureToScala(x)
+        }
+      }
+
+      Actorize.postMsg.invoke('add -> act)
+      Actorize.postMsg.invoke("Wombat")
+      Actorize.postMsg.invoke("Sloth")
+      Thread.sleep(200)
+      got must_== Vector(Vector(), "Wombat", "Sloth")
+
+    }
+
   }
+
+
 }

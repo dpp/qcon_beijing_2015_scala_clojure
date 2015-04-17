@@ -1,6 +1,7 @@
 package code 
 package snippet
 
+import clojure.java.api.Clojure
 import net.liftweb.http.js.JE.JsRaw
 import net.liftweb.http.js.JsCmds.Script
 import net.liftweb.http._
@@ -11,7 +12,10 @@ import code.lib._
 
 
 object Actorize {
-  lazy val postMsg = ClojureInterop.findVar("code.core", "post-msg")
+  lazy val postMsg = {
+    ClojureInterop.require.invoke(Clojure.read("code.core"))
+    ClojureInterop.findVar("code.core", "post-msg")
+  }
 
   def render = {
     for (
@@ -22,8 +26,6 @@ object Actorize {
       // browser and the `messageFromServer` function is
       // called
       val clientProxy = sess.serverActorForClient("messageFromServer",
-
-        shutdownFunc = Full(a => postMsg.invoke('remove -> a)),
         dataFilter = ClojureInterop.transitWrite(_)
       )
 

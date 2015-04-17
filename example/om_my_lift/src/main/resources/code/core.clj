@@ -4,18 +4,10 @@
 
 (def chat-server (async/chan))
 
-(def- send-msg
-      "Send a message to the channel or function or whatever"
-      [chan msg]
-      (cond
-        (ifn? chan) (chan msg)
-        :else (async/put! chan msg))
-      )
-
 (defn post-msg
   "Posts a message to the chat-server"
   [msg]
-  (->> msg util/to-c (send-msg chat-server)))
+  (->> msg util/to-c (async/put! chat-server)))
 
 (async/go-loop [chats []
                 listeners []]
@@ -23,19 +15,18 @@
     (cond
       (string? msg)
       (do
-        (doseq [x listeners] (send-msg x msg))
-        (recur (conj chats x) listeners)
+        (doseq [f listeners] (f msg))
+        (recur (conj chats msg) listeners)
         )
 
       (= :add (first msg))
-      (let [chan (second msg)]
-        (send-msg chan (take-last 40 chats))
-        (recur chats (conj listeners chan))
+      (let [f (second msg)]
+        (f (take-last 40 chats))
+        (recur chats (conj listeners f))
         )
 
-      (= :remove (first msg))
-      (let [chan (second msg)]
-        (recur chats (vec (remove #(identical? % chan) listeners))))
-
-      :else (recur chats listeners))
+      :else
+      (do
+        (println "Got " msg " dunno what to do with it")
+        (recur chats listeners)))
     ))
