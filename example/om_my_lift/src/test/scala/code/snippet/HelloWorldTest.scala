@@ -66,7 +66,7 @@ object HelloWorldTestSpecs extends Specification with AroundExample{
       converted.isInstanceOf[IPersistentVector] must_== true
       (converted.size()) must_== from.productArity
       converted.get(0) must_== ClojureInterop.toKeyword("frog")
-      converted.get(1).isInstanceOf[IFn] must_== true
+      converted.get(1).isInstanceOf[LiftActor] must_== true
     }
 
     "Convert Clojure to Scala" in {
@@ -85,9 +85,12 @@ object HelloWorldTestSpecs extends Specification with AroundExample{
       Actorize.postMsg.invoke('add -> act)
       Actorize.postMsg.invoke("Wombat")
       Actorize.postMsg.invoke("Sloth")
-      Thread.sleep(200)
-      got must_== Vector(Vector(), "Wombat", "Sloth")
+      Actorize.postMsg.invoke('remove -> act) // remove
+      Actorize.postMsg.invoke('add -> act) // we should get the history
+      Actorize.postMsg.invoke("3") // one more message, shouldn't dup if
 
+      Thread.sleep(200)
+      got must_== Vector(Vector(), "Wombat", "Sloth", Vector("Wombat", "Sloth"), "3")
     }
 
   }

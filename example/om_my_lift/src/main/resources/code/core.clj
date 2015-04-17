@@ -15,18 +15,22 @@
     (cond
       (string? msg)
       (do
-        (doseq [f listeners] (f msg))
+        (doseq [f listeners] (util/apply-it f msg))
         (recur (conj chats msg) listeners)
         )
 
       (= :add (first msg))
       (let [f (second msg)]
-        (f (take-last 40 chats))
+        (util/apply-it f (take-last 40 chats))
         (recur chats (conj listeners f))
         )
 
+      (= :remove (first msg))
+      (let [f (second msg)]
+
+        (recur chats (remove #(identical? f %) listeners))
+        )
+
       :else
-      (do
-        (println "Got " msg " dunno what to do with it")
-        (recur chats listeners)))
+      (recur chats listeners))
     ))

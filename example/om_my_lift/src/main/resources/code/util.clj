@@ -46,12 +46,6 @@
        (mapv #(->> % (.productElement prod) to-c)
              (range 0 (.productArity prod)))))})
 
-(extend LiftActor FromScala
-  {:to-c
-   (fn [actor]
-     (fn [x] (.$bang actor x))
-     )})
-
 (extend Symbol FromScala
   {:to-c
    (fn [s] (-> s .name keyword))})
@@ -84,16 +78,22 @@
 
 (extend IFn Applyable
   {:apply-it
-   (fn [^IFn the-fn param] (the-fn param))})
+   (fn [the-fn param] (the-fn param))})
 
 (extend scala.Function1 Applyable
   {:apply-it
-   (fn [^scala.Function1 the-fn param] (.apply the-fn param))})
+   (fn [the-fn param] (.apply the-fn param))})
 
 (extend ManyToManyChannel Applyable
   {:apply-it
-   (fn [^ManyToManyChannel the-chan param] (put! the-chan param))}
+   (fn [the-chan param] (put! the-chan param))}
   )
+
+(extend LiftActor Applyable
+  {:apply-it
+   (fn [actor param] (.$bang actor param))}
+  )
+
 
 (defprotocol ClojureToScala
   "Converts a Clojure data structyre to a Scala data structure"
