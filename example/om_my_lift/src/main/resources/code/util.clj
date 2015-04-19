@@ -1,11 +1,13 @@
 (ns code.util
-  (:require [clojure.core.async :as async :refer [put!]])
+  (:require [clojure.core.async :as async :refer [put!]]
+            [clojure.core.match :as match :refer [match]])
   (:import (scala.collection Seq Iterator Map)
            (scala Product PartialFunction Symbol)
            (net.liftweb.actor LiftActor)
            (clojure.lang IFn IPersistentVector Keyword)
            (code.lib MyActor)
            (clojure.core.async.impl.channels ManyToManyChannel)
+
            ))
 
 (defprotocol FromScala
@@ -72,25 +74,25 @@
 
 (def ^:dynamic *current-actor* nil)
 
-(defprotocol Applyable
-  "Does an application... treats whatever like a single param function"
-  (apply-it [the-fn param] "applies the parameter"))
+(defprotocol Sendable
+  "Send the message to the thing... whatever that thing is"
+  (send! [the-fn param] "applies the parameter"))
 
-(extend IFn Applyable
-  {:apply-it
+(extend IFn Sendable
+  {:send!
    (fn [the-fn param] (the-fn param))})
 
-(extend scala.Function1 Applyable
-  {:apply-it
+(extend scala.Function1 Sendable
+  {:send!
    (fn [the-fn param] (.apply the-fn param))})
 
-(extend ManyToManyChannel Applyable
-  {:apply-it
+(extend ManyToManyChannel Sendable
+  {:send!
    (fn [the-chan param] (put! the-chan param))}
   )
 
-(extend LiftActor Applyable
-  {:apply-it
+(extend LiftActor Sendable
+  {:send!
    (fn [actor param] (.$bang actor param))}
   )
 
@@ -164,7 +166,7 @@
             (proxy [PartialFunction] []
               (isDefinedAt [x] true)
               (apply [x] (binding [*current-actor* @my-this]
-                           (apply-it the-fn x))))))]
+                           (send! the-fn x))))))]
     (reset! my-this ret)
     ret
     )

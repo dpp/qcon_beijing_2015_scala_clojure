@@ -33,7 +33,7 @@ object HelloWorldTestSpecs extends Specification with AroundExample{
 
   "Scala Clojure Interopt" should {
     "Convert a Seq to a Clojure lazy seq" in {
-      val from = List(1,2,3)
+      val from = List(1, 2, 3)
       val converted = ClojureInterop.scalaToClojure(from)
       converted.isInstanceOf[java.util.List[_]] must_== true
       (converted.asInstanceOf[java.util.List[Any]]: Seq[Any]) must_== from
@@ -58,7 +58,7 @@ object HelloWorldTestSpecs extends Specification with AroundExample{
 
     "Do a deep convert" in {
       val from = ('frog, new LiftActor {
-        override protected def messageHandler: PartialFunction[Any, Unit] =  {
+        override protected def messageHandler: PartialFunction[Any, Unit] = {
           case _ =>
         }
       })
@@ -70,7 +70,7 @@ object HelloWorldTestSpecs extends Specification with AroundExample{
     }
 
     "Convert Clojure to Scala" in {
-      ClojureInterop.clojureToScala(ClojureInterop.eval("""["foo" 42 :dog {:dog 88, "cat" :moose}]""")) must_==
+      ClojureInterop.clojureToScala(ClojureInterop.eval( """["foo" 42 :dog {:dog 88, "cat" :moose}]""")) must_==
         Vector("foo", 42, 'dog, Map('dog -> 88, "cat" -> 'moose))
     }
 
@@ -94,6 +94,4 @@ object HelloWorldTestSpecs extends Specification with AroundExample{
     }
 
   }
-
-
 }

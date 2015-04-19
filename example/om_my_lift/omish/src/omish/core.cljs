@@ -16,22 +16,18 @@
       "receive from server"
       [x]
       (let
-        [native (t/read t-reader x)]
+        [msg (t/read t-reader x)]
         (cond
-          (seq? native)
-          (swap! app-state assoc-in [:chats] (vec native))
+          (seq? msg)
+          (swap! app-state assoc-in [:chats] (vec msg))
 
-          (string? native)
-          (swap! app-state update-in [:chats] conj native)
+          (string? msg)
+          (swap! app-state update-in [:chats] conj msg)
 
           :else nil)))
 
 (defn by-id [id] (. js/document (getElementById id)))
 
-(defn send
-      "send data to the server"
-      [data]
-      (js/sendToServer (t/write t-writer data)))
 
 (om/root
   (fn [data owner]
@@ -43,6 +39,11 @@
                        (map #(dom/li nil %) (:chats data))))))
   app-state
   {:target (by-id "chats")})
+
+(defn send
+      "send data to the server"
+      [data]
+      (js/sendToServer (t/write t-writer data)))
 
 (defn send-chat
       []

@@ -106,7 +106,10 @@ object ClojureInterop {
    * @param vr the var name
    * @return the var
    */
-  def findVar(pkg: String, vr: String): IFn = Clojure.`var`(pkg, vr)
+  def findVar(pkg: String, vr: String): IFn = {
+    requirePackage(pkg)
+    Clojure.`var`(pkg, vr)
+  }
 
   /**
    * Reload a named Clojure package

@@ -1,36 +1,30 @@
 (ns code.core
-  (:require [code.util :as util]
-            [clojure.core.async :as async]))
+  (:require [code.util :as util :refer [send!]]
+            [clojure.core.match :as match :refer [match]]
+            [clojure.core.async :as async :refer [chan put! <!]]))
 
-(def chat-server (async/chan))
+(def chat-server (chan))
 
 (defn post-msg
   "Posts a message to the chat-server"
   [msg]
-  (->> msg util/to-c (async/put! chat-server)))
+  (->> msg util/to-c (send! chat-server)))
 
-(async/go-loop [chats []
-                listeners []]
-  (let [msg (async/<! chat-server)]
-    (cond
-      (string? msg)
+(async/go-loop [chats [] listeners []]
+    (match (<! chat-server)
+      [:add f]
       (do
-        (doseq [f listeners] (util/apply-it f msg))
-        (recur (conj chats msg) listeners)
-        )
+        (send! f (take-last 40 chats))
+        (recur chats (conj listeners f)))
 
-      (= :add (first msg))
-      (let [f (second msg)]
-        (util/apply-it f (take-last 40 chats))
-        (recur chats (conj listeners f))
-        )
+      [:remove f]
+      (recur chats (remove #(identical? f %) listeners))
 
-      (= :remove (first msg))
-      (let [f (second msg)]
-
-        (recur chats (remove #(identical? f %) listeners))
-        )
+      (msg :guard string?)
+      (do
+        (doseq [f listeners] (send! f msg))
+        (recur (conj chats msg) listeners))
 
       :else
-      (recur chats listeners))
-    ))
+      (recur chats listeners)
+      ))
